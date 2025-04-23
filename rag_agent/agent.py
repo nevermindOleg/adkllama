@@ -1,6 +1,6 @@
 from google.adk.agents import Agent
 
-retrieval_agent = Agent(
+root_agent = Agent(
     name="retrieval_agent",
     model="gemini-2.0-flash", # Or another suitable model
     description="An agent that answers questions using retrieved information from a knowledge base.",
