@@ -1,4 +1,6 @@
-from llama_index.core.retrievers import BaseRetriever, VectorIndexRetriever, BM25Retriever
+from llama_index.core.retrievers import BaseRetriever, VectorIndexRetriever
+from llama_index.retrievers.bm25 import BM25Retriever
+
 from typing import List
 from .reranker import Reranker
 import logging

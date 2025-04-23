@@ -1,63 +1,104 @@
-from llama_index.core.tools import QueryEngineTool, ToolOutput
-from typing import Any, List
-import pandas as pd
 import logging
-from .utils import evaluate_retrieval
+from typing import Any, List, Optional
+import pandas as pd
+from llama_index.core.tools import QueryEngineTool, ToolOutput
+from llama_index.core.query_engine import BaseQueryEngine
+from vector_search.utils import evaluate_retrieval
 
-logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 class CustomQueryEngineTool(QueryEngineTool):
-    def call(self, *args: Any, doc_ids: List[str] = None, **kwargs: Any) -> ToolOutput:
+    def call(self, *args: Any, **kwargs: Any) -> ToolOutput:
+        """
+        Выполняет синхронный запрос к query_engine и возвращает результат с метаданными документов.
+
+        Args:
+            *args: Позиционные аргументы, включая query_str.
+            **kwargs: Дополнительные аргументы для query.
+
+        Returns:
+            ToolOutput: Объект с результатом запроса, именем инструмента, входными и выходными данными.
+        """
         query_str = self._get_query_str(*args, **kwargs)
-        response = self._query_engine.query(query_str, doc_ids=doc_ids)
-        response_with_docs_info = self.get_response_with_metadata(response.response, response.metadata)
-        if doc_ids:
-            metrics = evaluate_retrieval(query_str, response.source_nodes, doc_ids)
-            logger.info(f"Retrieval metrics: {metrics}")
-        logger.info(f"Query: {query_str}, Retrieved documents: {[doc.metadata for doc in response.source_nodes]}")
-        return ToolOutput(
-            content=response_with_docs_info,
-            tool_name=self.metadata.name,
-            raw_input={"input": query_str},
-            raw_output=response,
-        )
+        try:
+            response = self._query_engine.query(query_str)
+            response_with_docs_info = self.get_response_with_metadata(response.response, response.metadata)
+            logger.info(f"Query: {query_str}, Response: {response_with_docs_info}")
+            return ToolOutput(
+                content=response_with_docs_info,
+                tool_name=self.metadata.name,
+                raw_input={"input": query_str},
+                raw_output=response,
+            )
+        except Exception as e:
+            logger.error(f"Error processing query: {query_str}, Error: {e}")
+            return ToolOutput(
+                content=f"Error processing query: {str(e)}",
+                tool_name=self.metadata.name,
+                raw_input={"input": query_str},
+                raw_output=None,
+            )
 
-    async def acall(self, *args: Any, doc_ids: List[str] = None, **kwargs: Any) -> ToolOutput:
+    async def acall(self, *args: Any, **kwargs: Any) -> ToolOutput:
+        """
+        Выполняет асинхронный запрос к query_engine и возвращает результат с метаданными документов.
+
+        Args:
+            *args: Позиционные аргументы, включая query_str.
+            **kwargs: Дополнительные аргументы для query.
+
+        Returns:
+            ToolOutput: Объект с результатом запроса, именем инструмента, входными и выходными данными.
+        """
         query_str = self._get_query_str(*args, **kwargs)
-        response = await self._query_engine.aquery(query_str, doc_ids=doc_ids)
-        response_with_docs_info = self.get_response_with_metadata(response.response, response.metadata)
-        if doc_ids:
-            metrics = evaluate_retrieval(query_str, response.source_nodes, doc_ids)
-            logger.info(f"Retrieval metrics: {metrics}")
-        logger.info(f"Query: {query_str}, Retrieved documents: {[doc.metadata for doc in response.source_nodes]}")
-        return ToolOutput(
-            content=response_with_docs_info,
-            tool_name=self.metadata.name,
-            raw_input={"input": query_str},
-            raw_output=response,
-        )
+        try:
+            response = await self._query_engine.aquery(query_str)
+            response_with_docs_info = self.get_response_with_metadata(response.response, response.metadata)
+            logger.info(f"Async query: {query_str}, Response: {response_with_docs_info}")
+            return ToolOutput(
+                content=response_with_docs_info,
+                tool_name=self.metadata.name,
+                raw_input={"input": query_str},
+                raw_output=response,
+            )
+        except Exception as e:
+            logger.error(f"Error processing async query: {query_str}, Error: {e}")
+            return ToolOutput(
+                content=f"Error processing query: {str(e)}",
+                tool_name=self.metadata.name,
+                raw_input={"input": query_str},
+                raw_output=None,
+            )
 
-    def get_response_with_metadata(self, response, metadata):
-        documents = pd.DataFrame(metadata.values())
-        documents.drop_duplicates(subset='file_name', inplace=True)
-        
-        if 'score' in documents.columns:
-            documents = documents[documents['score'] > 0.7].sort_values(by='score', ascending=False).head(5)
-        
-        documents_info = []
-        for _, document in documents.iterrows():
-            document_info = f"""
-                Document name: {document.get('file_name')}
-                Document link: {document.get('url')}
-                Relevance score: {document.get('score', 'N/A')}
-            """
-            documents_info.append(document_info)
+    def get_response_with_metadata(self, response: str, metadata: Optional[dict]) -> str:
+        """
+        Форматирует ответ с информацией о документах из метаданных.
 
-        documents_info = "Source documents:
-" + "
-".join(documents_info) if documents_info else "No relevant documents found."
-        response_with_docs_info = f"{response}
-{documents_info}"
-        logger.info(response_with_docs_info)
+        Args:
+            response: Текстовый ответ от query_engine.
+            metadata: Словарь метаданных документов.
+
+        Returns:
+            str: Ответ, объединенный с информацией о документах.
+        """
+        documents_info = "Source documents:\n"
+        if metadata and isinstance(metadata, dict) and metadata.values():
+            try:
+                documents = pd.DataFrame(metadata.values())
+                documents.drop_duplicates(subset='file_name', inplace=True)
+                for _, document in documents.iterrows():
+                    document_info = (
+                        f"  Document name: {document.get('file_name', 'N/A')}\n"
+                        f"  Document link: {document.get('url', 'N/A')}\n"
+                    )
+                    documents_info += document_info
+            except Exception as e:
+                logger.error(f"Error processing metadata: {e}")
+                documents_info += "  Error processing document metadata.\n"
+        else:
+            documents_info += "  No relevant documents found.\n"
+
+        response_with_docs_info = f"{response}\n\n{documents_info}"
+        logger.info(f"Formatted response: {response_with_docs_info}")
         return response_with_docs_info
