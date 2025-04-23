@@ -1,6 +1,6 @@
-llama-index==0.12.32
-llama-index-vector-stores-qdrant==0.6.0
-qdrant-client==1.14.1
+llama-index
+llama-index-vector-stores-qdrant
+qdrant-client
 langchain-openai==0.3.14
 langchain-qdrant==0.2.0
 sentence-transformers==4.1.0
