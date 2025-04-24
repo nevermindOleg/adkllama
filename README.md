@@ -69,11 +69,9 @@
 ## Структура проекта
 
 ```
-.
 ├── rag_agent/
 │   ├── __init__.py
-│   ├── agent.py
-│   ├── Untitled.ipynb          # Основной Jupyter Notebook
+│   ├── agent.py             # Core RAG agent logic
 │   └── vector_search/
 │       ├── __init__.py
 │       ├── custom_query_engine_tool.py
@@ -82,8 +80,22 @@
 │       ├── qdrant_vector_store.py
 │       ├── reranker.py
 │       └── utils.py
-├── requirements.txt          # Зависимости Python
-├── README.md                 # Этот файл
-├── .gitignore                # Список игнорируемых файлов/директорий
-└── .env.example              # Пример файла .env (опционально, можно добавить для демонстрации формата)
+├── examples/               # Example usage of the RAG agent
+│   └── main.ipynb          # Example usage for the agent
+├── tests/                  # Test suite for the project
+│   ├── __init__.py         # Mark tests as a package
+│   └── test_agent.py #test for the agent.py
+│   └── rag_agent/
+│       └── vector_search/
+│           ├── test_custom_query_engine_tool.py
+│           ├── test_document_loader.py
+│           ├── test_hybrid_retriever.py
+│           ├── test_qdrant_vector_store.py
+│           ├── test_reranker.py
+│           └── test_utils.py
+├── requirements.txt          # Project dependencies
+├── README.md                 # Project documentation
+├── .gitignore                # Version control ignore list
+└── .env.example              # Example environment file
+
 ```
